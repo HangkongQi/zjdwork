@@ -18,8 +18,10 @@ typedef struct{
 
 
 // x is number of input, y is number of hidden
-#define IN2HIDDEN_INDEX(x, y)  (x * net->hidden_n + y)
-#define HIDDEN2OUT_INDEX(x, y) (x * net->output_n + y)
+//#define IN2HIDDEN_INDEX(x, y)  (x * net->hidden_n + y)
+//#define HIDDEN2OUT_INDEX(x, y) (x * net->output_n + y)
+#define IN2HIDDEN_INDEX(x, y)  (x + y * net->input_n)
+#define HIDDEN2OUT_INDEX(x, y) (x + y * net->hidden_n)
 
 NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 {
@@ -120,59 +122,41 @@ void print_weight(NET *net)
 
 }
 
-int getMS(double *m,double *s,int size)
+int getMS(double *m,double *s)
 {
 	FILE *fp;
 	int i = 0,j=0;
-	int tmp;
-	m = (double *)malloc(size * sizeof(double));
-	s = (double *)malloc(size * sizeof(double));
-
+	
 	fp = fopen("mean.txt","r");
-/*	if(fp == NULL)
-	{
-		printf("open file error!");
-		return -1;		
-	}	tmp = fgetc(fp);
-	if(tmp == EOF)
-	{
-		printf("file empty!\n");
-		return 0;
-	}
-	rewind(fp);
-	while(!feof(fp))
-	{
-		fscanf(fp,"%lf",&m[i]);	
-		i++;
-		printf("%lf\n",m[i]);
-	}
-*/
 	while(fscanf(fp,"%lf\n",&m[i]) != -1){
-		printf("%lf\n",m[i]);
+		printf("mean[%d]: %lf\n",i, m[i]);
+		i++;
 	}
 	fclose(fp);
+
 	fp = fopen("std.txt","r");
 	while(fscanf(fp,"%lf\n",&s[j]) != -1){
-		printf("%lf\n",s[j]);
+		printf("std[%d]: %lf\n", j, s[j]);
+		j++;
 	}
 	fclose(fp);	
 	return 0;
 		
 }
-double* normalize(double* data,double* mean,double* std,int size)
+
+double *normalize(double* data,double* mean, double* std,int size)
 {
 	double* new_data;
-        int i;
-	new_data = (double*)malloc(size * sizeof(double*));
-        for(i=0;i<size;i++)
-        {
-        //     new_data[i] = (data[i]-mean[i])/std[i];
-	     printf("%lf\n",mean[i]);
-	    
-	//     printf("%lf ",mean[i])
-        }
-        return new_data;
- }
+	int i;
+	new_data = (double*)malloc(size * sizeof(double));
+
+	for(i=0;i<size;i++)
+	{
+		new_data[i] = (data[i]-mean[i])/std[i];
+		printf("new_data[%d]: %lf = (%lf - %lf)/%lf;\n", i, new_data[i], data[i], mean[i], std[i]);
+	}
+	return new_data;
+}
 
 double activation(double x)
 {
@@ -195,7 +179,7 @@ void comout(double *p1,double *p2,double* c,int n1,int n2)
       }	
 }
 
-int test_nn(float feature[])
+double test_nn(double feature[])
 {
 	NET *net;
 	int in_dim, hidden_dim, out_dim;
@@ -203,6 +187,7 @@ int test_nn(float feature[])
 	int i;
 	double *mean;
 	double *std;
+	double *new_feature;
 
 	FILE *fp;
 	fp = fopen("net.txt", "r");
@@ -223,31 +208,37 @@ int test_nn(float feature[])
 	net = bp_create(in_dim, hidden_dim, out_dim, weight);
 	if (net == NULL) {
 		printf("Create Net Error\n");
-		return -1;
 	}
 
-//	print_weight(net);
-	for(i=1;i<net->input_n;i++){
-	
-		net->input_units[i]=feature[i];
-		
-//		printf("net->input_units %lf\n",net->input_units[i]);
+	new_feature = malloc(sizeof(double) * in_dim);
+	if (new_feature == NULL) {
+		perror("malloc\n");
 	}
+
+	mean = (double *)malloc(in_dim * sizeof(double));
+	std  = (double *)malloc(in_dim * sizeof(double));
+	getMS(mean, std);
+
+	new_feature = normalize(feature, mean, std, in_dim);	
+
+	for(i=1;i<net->input_n;i++){
+		net->input_units[i]=new_feature[i-1];
+		printf("net->input_units %lf\n",net->input_units[i]);
+	}
+
 	comout(net->input_units,net->hidden_units,net->in2hidden_weights,in_dim,hidden_dim);
 	comout(net->hidden_units,net->output_units,net->hidden2out_weights,hidden_dim,out_dim);
+
+	return net->output_units[0];
 }
 
 // For Test
 double feature_test[] = {-0.93, 0.68, -0.15, 0.12, 6.73, -0.55, -0.35};
 int main()
 {
-	int f_size = 0,i;
-	f_size =sizeof(feature_test)/sizeof(feature_test[0]); 
-	double *mean,*std;
-	double* new_feature;
-	getMS(mean,std,f_size);
-	printf("%lf\n",mean[1]);
-//	new_feature = normalize(feature_test,mean,std,f_size);
-	
-//	test_nn(new_feature);	
+	double ret;
+
+	ret = test_nn(feature_test);
+
+	printf("result is: %f\n", ret);
 }
