@@ -1,2 +1,2 @@
 all:
-	gcc c_test.c -g -lm
+	gcc nn_test.c -g -lm
