@@ -233,7 +233,7 @@ double test_nn(double feature[])
 }
 
 // For Test
-double feature_test[] = {-0.93, 0.68, -0.15, 0.12, 6.73, -0.55, -0.35};
+double feature_test[] = {-2.86, 0.51, -1.62, 0.51, 65.42, -2.00, -1.81};
 int main()
 {
 	double ret;
