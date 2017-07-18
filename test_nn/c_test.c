@@ -278,8 +278,20 @@ double feature_test[] = {};
 int main()
 {
 	double ret;
+	double tmp;
 
-	ret = test_nn(feature_test);
-
-	printf("result is: %f\n", ret);
+	FILE *fp;
+	fp = fopen("data.txt", "r");
+	
+	while (fscanf(fp, "%lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf\n", &tmp,
+			&feature_test[0],
+			&feature_test[1],
+			&feature_test[2],
+			&feature_test[3],
+			&feature_test[4],
+			&feature_test[5],
+			&feature_test[6]) != -1) {
+		ret = test_nn(feature_test);
+		printf("result is: %f  %f\n", ret, tmp);
+	}
 }
