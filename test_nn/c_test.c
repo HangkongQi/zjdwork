@@ -18,10 +18,10 @@ typedef struct{
 
 
 // x is number of input, y is number of hidden
-//#define IN2HIDDEN_INDEX(x, y)  (x * net->hidden_n + y)
-//#define HIDDEN2OUT_INDEX(x, y) (x * net->output_n + y)
-#define IN2HIDDEN_INDEX(x, y)  (x + y * net->input_n)
-#define HIDDEN2OUT_INDEX(x, y) (x + y * net->hidden_n)
+#define IN2HIDDEN_INDEX(x, y)  (x * net->hidden_n + y)
+#define HIDDEN2OUT_INDEX(x, y) (x * net->output_n + y)
+// #define IN2HIDDEN_INDEX(x, y)  (x + y * net->input_n)
+// #define HIDDEN2OUT_INDEX(x, y) (x + y * net->hidden_n)
 
 NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 {
@@ -55,6 +55,7 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 			weight_offset += 1;
 		}
 	}
+	// 0,0
 
 	/* input's bias to hidden */
 	for (i=0; i<1; i++) {
@@ -63,19 +64,18 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 			weight_offset += 1;
 		}
 	}
+    // 0,1  0,2  0,3  0,4  0,5
 
 	/* input to hidden */
-	for (i=1; i<net->input_n; i++) {
-		for (j=1; j<net->hidden_n; j++) {
-//			printf("in2hidden: %d %d %d\n", i, j, IN2HIDDEN_INDEX(i, j));
-			fflush(stdout);
-			printf("index: %d\n", weight_offset);
-			printf("weight %lf\n", weight[weight_offset]);
-			fflush(stdout);
+	for (i=1; i<net->hidden_n; i++) {
+		for (j=1; j<net->input_n; j++) {
 			net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)] = weight[weight_offset];
 			weight_offset += 1;
 		}
 	}
+	// 1,1   2,1   3,1    4,1   5,1    6,1   7,1
+    // 1,2   2,2   3,2    4,2   5,2    6,2   7,2
+    // ...
 
 	/* hidden to out */
 	for (i=1; i<net->hidden_n; i++) {
@@ -84,6 +84,7 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 			weight_offset += 1;
 		}
 	}
+	// 1,0  2,0  3,0   4,0  5,0
 
 	return net;
 }
@@ -92,34 +93,42 @@ void print_weight(NET *net)
 {
 	int i;
 	int j;
-
-	printf("input bias to hidden:  (0 is bias)\n");
-	for (i=0; i<1; i++) {
-		for (j=1; j<net->hidden_n; j++) {
-			printf("[%d][%d]: %.20lf\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
-		}
-	}
-	printf("hidden bias to pit:  (0 is bias)\n");
+	/* hidden's bias to output */
+	printf("hidden bias to output:\n");
 	for (i=0; i<1; i++) {
 		for (j=0; j<net->output_n; j++) {
-			printf("[%d][%d]: %.20lf\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
+			printf("(%d, %d): %f\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
 		}
 	}
 
-	printf("input to hidden: \n");
-	for (i=1; i<net->input_n; i++) {
+	/* input's bias to hidden */
+	printf("input bias to hidden:\n");
+	for (i=0; i<1; i++) {
 		for (j=1; j<net->hidden_n; j++) {
-			printf("[%d][%d]: %.20lf\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
+			printf("(%d, %d): %f\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
 		}
 	}
+    // 0,1  0,2  0,3  0,4  0,5
 
-	printf("hidden to out: \n");
+	/* input to hidden */
+	printf("input to hidden:\n");
+	for (i=1; i<net->hidden_n; i++) {
+		for (j=1; j<net->input_n; j++) {
+			printf("(%d, %d): %f\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
+		}
+	}
+	// 1,1   2,1   3,1    4,1   5,1    6,1   7,1
+    // 1,2   2,2   3,2    4,2   5,2    6,2   7,2
+    // ...
+
+	/* hidden to out */
+	printf("hidden to out:\n");
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=0; j<net->output_n; j++) {
-			printf("[%d][%d]: %.20lf\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
+			printf("(%d, %d): %f\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
 		}
 	}
-
+	// 1,0  2,0  3,0   4,0  5,0
 }
 
 int getMS(double *m,double *s)
@@ -163,20 +172,35 @@ double activation(double x)
        return((2.0/(1.0+exp(-2.0*x)))-1);
 }
 
-void comout(double *p1,double *p2,double* c,int n1,int n2)
+void comout_in2hidden(NET *net, double *p1,double *p2,double* c,int n1,int n2)
 {   
-      double sum;
-      int j,k;
-      p1[0] = 1;
-      for(j = 0;j < n2;j++)
-      {
-          sum = 0.0;
-          for(k = 0;k <= n1;k++)
-          {
-              sum += c[j*n1+k]*p1[k];
-          }     
-          p2[j] = activation(sum);
-      }	
+
+	int i, j;
+	double sum;
+	p1[0] = 1.0;
+
+	for (i=1; i<=n2; i++) {
+		sum = 0.0;
+		for (j=0; j<=n1; j++) {
+			sum += p1[j] * c[IN2HIDDEN_INDEX(j, i)];
+		}
+		p2[i] = sum;
+	}
+}
+
+void comout_hidden2out(NET *net, double *p1,double *p2,double* c,int n1,int n2)
+{   
+	int i, j;
+	double sum;
+	p1[0] = 1.0;
+
+	for (i=0; i<n2; i++) {
+		sum = 0.0;
+		for (j=0; j<=n1; j++) {
+			sum += p1[j] * c[HIDDEN2OUT_INDEX(j, i)];
+		}
+		p2[i] = sum;
+	}
 }
 
 double test_nn(double feature[])
@@ -210,6 +234,8 @@ double test_nn(double feature[])
 		printf("Create Net Error\n");
 	}
 
+	print_weight(net);
+
 	new_feature = malloc(sizeof(double) * in_dim);
 	if (new_feature == NULL) {
 		perror("malloc\n");
@@ -226,8 +252,8 @@ double test_nn(double feature[])
 		printf("net->input_units %lf\n",net->input_units[i]);
 	}
 
-	comout(net->input_units,net->hidden_units,net->in2hidden_weights,in_dim,hidden_dim);
-	comout(net->hidden_units,net->output_units,net->hidden2out_weights,hidden_dim,out_dim);
+	comout_in2hidden(net, net->input_units,net->hidden_units,net->in2hidden_weights,in_dim,hidden_dim);
+	comout_hidden2out(net, net->hidden_units,net->output_units,net->hidden2out_weights,hidden_dim,out_dim);
 
 	return net->output_units[0];
 }
