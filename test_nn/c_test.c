@@ -69,7 +69,7 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 	/* input to hidden */
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=1; j<net->input_n; j++) {
-			net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)] = weight[weight_offset];
+			net->in2hidden_weights[IN2HIDDEN_INDEX(j, i)] = weight[weight_offset];
 			weight_offset += 1;
 		}
 	}
@@ -80,7 +80,7 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 	/* hidden to out */
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=0; j<net->output_n; j++) {
-			net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)] = weight[weight_offset];
+			net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)] = weight[weight_offset];
 			weight_offset += 1;
 		}
 	}
@@ -97,7 +97,8 @@ void print_weight(NET *net)
 	printf("hidden bias to output:\n");
 	for (i=0; i<1; i++) {
 		for (j=0; j<net->output_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
+			printf("(%d, %d)[%d]: %f\n", i, j, HIDDEN2OUT_INDEX(i,j),
+				net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
 		}
 	}
 
@@ -105,7 +106,8 @@ void print_weight(NET *net)
 	printf("input bias to hidden:\n");
 	for (i=0; i<1; i++) {
 		for (j=1; j<net->hidden_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
+			printf("(%d, %d)[%d]: %f\n", i, j, IN2HIDDEN_INDEX(i, j),
+					net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
 		}
 	}
     // 0,1  0,2  0,3  0,4  0,5
@@ -114,7 +116,8 @@ void print_weight(NET *net)
 	printf("input to hidden:\n");
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=1; j<net->input_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
+			printf("(%d, %d)[%d]: %f\n", j, i, IN2HIDDEN_INDEX(j, i),
+					net->in2hidden_weights[IN2HIDDEN_INDEX(j, i)]);
 		}
 	}
 	// 1,1   2,1   3,1    4,1   5,1    6,1   7,1
@@ -125,7 +128,8 @@ void print_weight(NET *net)
 	printf("hidden to out:\n");
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=0; j<net->output_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
+			printf("(%d, %d)[%d]: %f\n", j, i, HIDDEN2OUT_INDEX(j, i),
+					net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)]);
 		}
 	}
 	// 1,0  2,0  3,0   4,0  5,0
@@ -181,9 +185,13 @@ void comout_in2hidden(NET *net, double *p1,double *p2,double* c,int n1,int n2)
 
 	for (i=1; i<=n2; i++) {
 		sum = 0.0;
+		printf("hidden[%d]:\n", i);
 		for (j=0; j<=n1; j++) {
+			printf("%f * %f(%d, %d) = %f\n", p1[j], c[IN2HIDDEN_INDEX(j, i)],
+					j, i, p1[j] * c[IN2HIDDEN_INDEX(j, i)]);
 			sum += p1[j] * c[IN2HIDDEN_INDEX(j, i)];
 		}
+		printf("hidden[%d] is %f\n", i, sum);
 		p2[i] = sum;
 	}
 }
