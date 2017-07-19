@@ -143,21 +143,26 @@ int getMS(double *m,double *s)
 	FILE *fp;
 	int i = 0,j=0;
 	
+printf("1111111111\n");
 	fp = fopen("mean.txt","r");
+	if (fp == NULL) {
+		printf("Open File mean.txt error\n");
+	}
 	while(fscanf(fp,"%lf\n",&m[i]) != -1){
 		printf("mean[%d]: %lf\n",i, m[i]);
 		i++;
 	}
 	fclose(fp);
+printf("1111111111 1\n");
 
 	fp = fopen("std.txt","r");
 	while(fscanf(fp,"%lf\n",&s[j]) != -1){
 		printf("std[%d]: %lf\n", j, s[j]);
 		j++;
 	}
+printf("1111111111 2\n");
 	fclose(fp);	
 	return 0;
-		
 }
 
 double *normalize(double* data,double* mean, double* std,int size)
@@ -224,8 +229,8 @@ double test_nn(double feature[])
 	int in_dim, hidden_dim, out_dim;
 	double *weight;
 	int i;
-	double *mean;
-	double *std;
+	double mean[] = {-1.273521, 0.774245, -0.806049, 0.464097, 37.086305, -1.415184, -0.906725};
+	double std[] = {0.352998, 0.256465, 0.300457, 0.220270, 16.997804, 1.187839, 0.260172};
 	double *new_feature;
 
 	FILE *fp;
@@ -248,18 +253,29 @@ double test_nn(double feature[])
 	if (net == NULL) {
 		printf("Create Net Error\n");
 	}
+	printf("Create BP done\n");
 
-	print_weight(net);
+	// print_weight(net);
 
+#if 0
 	new_feature = malloc(sizeof(double) * in_dim);
 	if (new_feature == NULL) {
 		perror("malloc\n");
 	}
+#endif
 
+#if 0
 	mean = (double *)malloc(in_dim * sizeof(double));
+	if (mean == NULL) {
+		printf("malloc mean error\n");
+	}
 	std  = (double *)malloc(in_dim * sizeof(double));
-	getMS(mean, std);
-
+	if (std == NULL) {
+		printf("malloc std error\n");
+	}
+	// getMS(mean, std);
+	printf("getMS done\n");
+#endif
 	new_feature = normalize(feature, mean, std, in_dim);	
 
 	for(i=1;i<net->input_n;i++){
@@ -270,7 +286,21 @@ double test_nn(double feature[])
 	comout_in2hidden(net, net->input_units,net->hidden_units,net->in2hidden_weights,in_dim,hidden_dim);
 	comout_hidden2out(net, net->hidden_units,net->output_units,net->hidden2out_weights,hidden_dim,out_dim);
 
-	return net->output_units[0];
+	double retdata = net->output_units[0];
+
+#if 1
+	free(net->input_units);
+	free(net->hidden_units);
+	free(net->output_units);
+	free(net->in2hidden_weights);
+	free(net->hidden2out_weights);
+	free(net);
+	// free(mean);
+	// free(std);
+	free(new_feature);
+	free(weight);
+#endif
+	return retdata;
 }
 
 // For Test
@@ -279,6 +309,7 @@ int main()
 {
 	double ret;
 	double tmp;
+	unsigned int count = 1;
 
 	FILE *fp;
 	fp = fopen("data.txt", "r");
@@ -291,7 +322,9 @@ int main()
 			&feature_test[4],
 			&feature_test[5],
 			&feature_test[6]) != -1) {
+		printf("count: %d\n", count);
 		ret = test_nn(feature_test);
 		printf("result is: %f  %f\n", ret, tmp);
+		count += 1;
 	}
 }
