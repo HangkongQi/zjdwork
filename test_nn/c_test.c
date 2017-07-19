@@ -51,7 +51,7 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 	/* hidden's bias to output */
 	for (i=0; i<1; i++) {
 		for (j=0; j<net->output_n; j++) {
-			net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)] = weight[weight_offset];
+			net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)] = weight[weight_offset];
 			weight_offset += 1;
 		}
 	}
@@ -69,7 +69,7 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
 	/* input to hidden */
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=1; j<net->input_n; j++) {
-			net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)] = weight[weight_offset];
+			net->in2hidden_weights[IN2HIDDEN_INDEX(j, i)] = weight[weight_offset];
 			weight_offset += 1;
 		}
 	}
@@ -78,9 +78,9 @@ NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
     // ...
 
 	/* hidden to out */
-	for (i=1; i<net->hidden_n; i++) {
-		for (j=0; j<net->output_n; j++) {
-			net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)] = weight[weight_offset];
+	for (i=0; i<net->output_n; i++) {
+		for (j=1; j<net->hidden_n; j++) {
+			net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)] = weight[weight_offset];
 			weight_offset += 1;
 		}
 	}
@@ -93,28 +93,33 @@ void print_weight(NET *net)
 {
 	int i;
 	int j;
+
 	/* hidden's bias to output */
-	printf("hidden bias to output:\n");
 	for (i=0; i<1; i++) {
 		for (j=0; j<net->output_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
+			printf("(%d, %d) %f  [%d]\n", j, i,
+						net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)],
+						HIDDEN2OUT_INDEX(j, i));
 		}
 	}
+	// 0,0
 
 	/* input's bias to hidden */
-	printf("input bias to hidden:\n");
 	for (i=0; i<1; i++) {
 		for (j=1; j<net->hidden_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
+			printf("(%d, %d) %f   [%d]\n", i, j,
+						net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)],
+						IN2HIDDEN_INDEX(i, j));
 		}
 	}
     // 0,1  0,2  0,3  0,4  0,5
 
 	/* input to hidden */
-	printf("input to hidden:\n");
 	for (i=1; i<net->hidden_n; i++) {
 		for (j=1; j<net->input_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)]);
+			printf("(%d, %d) %f    [%d]\n", j, i,
+						net->in2hidden_weights[IN2HIDDEN_INDEX(j, i)],
+						IN2HIDDEN_INDEX(j, i));
 		}
 	}
 	// 1,1   2,1   3,1    4,1   5,1    6,1   7,1
@@ -122,13 +127,15 @@ void print_weight(NET *net)
     // ...
 
 	/* hidden to out */
-	printf("hidden to out:\n");
-	for (i=1; i<net->hidden_n; i++) {
-		for (j=0; j<net->output_n; j++) {
-			printf("(%d, %d): %f\n", i, j, net->hidden2out_weights[HIDDEN2OUT_INDEX(i, j)]);
+	for (i=0; i<net->output_n; i++) {
+		for (j=1; j<net->hidden_n; j++) {
+			printf("(%d, %d) %f    [%d]\n", j, i,
+						net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)],
+						HIDDEN2OUT_INDEX(j, i));
 		}
 	}
 	// 1,0  2,0  3,0   4,0  5,0
+
 }
 
 int getMS(double *m,double *s)
@@ -181,10 +188,14 @@ void comout_in2hidden(NET *net, double *p1,double *p2,double* c,int n1,int n2)
 
 	for (i=1; i<=n2; i++) {
 		sum = 0.0;
+		printf("hidden[%d]:\n", i);
 		for (j=0; j<=n1; j++) {
+			printf("%f * %f(%d, %d) = %f\n", p1[j], c[IN2HIDDEN_INDEX(j, i)],
+					j, i, p1[j] * c[IN2HIDDEN_INDEX(j, i)]);
 			sum += p1[j] * c[IN2HIDDEN_INDEX(j, i)];
 		}
-		p2[i] = sum;
+		p2[i] = activation(sum);
+		printf("hidden[%d] is %f\n", i, p2[i]);
 	}
 }
 
@@ -196,10 +207,14 @@ void comout_hidden2out(NET *net, double *p1,double *p2,double* c,int n1,int n2)
 
 	for (i=0; i<n2; i++) {
 		sum = 0.0;
+		printf("out[%d]:\n", i);
 		for (j=0; j<=n1; j++) {
+			printf("%f * %f(%d, %d) = %f\n", p1[j], c[HIDDEN2OUT_INDEX(j, i)],
+					j, i, p1[j] * c[HIDDEN2OUT_INDEX(j, i)]);
 			sum += p1[j] * c[HIDDEN2OUT_INDEX(j, i)];
 		}
-		p2[i] = sum;
+		p2[i] = activation(sum);
+		printf("out[%d]: %f\n", i, p2[i]);
 	}
 }
 
@@ -259,12 +274,24 @@ double test_nn(double feature[])
 }
 
 // For Test
-double feature_test[] = {-2.86, 0.51, -1.62, 0.51, 65.42, -2.00, -1.81};
+double feature_test[] = {};
 int main()
 {
 	double ret;
+	double tmp;
 
-	ret = test_nn(feature_test);
-
-	printf("result is: %f\n", ret);
+	FILE *fp;
+	fp = fopen("data.txt", "r");
+	
+	while (fscanf(fp, "%lf, %lf, %lf, %lf, %lf, %lf, %lf, %lf\n", &tmp,
+			&feature_test[0],
+			&feature_test[1],
+			&feature_test[2],
+			&feature_test[3],
+			&feature_test[4],
+			&feature_test[5],
+			&feature_test[6]) != -1) {
+		ret = test_nn(feature_test);
+		printf("result is: %f  %f\n", ret, tmp);
+	}
 }
