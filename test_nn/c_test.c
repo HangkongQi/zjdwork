@@ -1,149 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
-typedef struct{
-    int input_n;
-    int hidden_n;
-    int output_n;
-
-    double *input_units;
-    double *hidden_units;
-    double *output_units;
-    
-    double *in2hidden_weights;
-    double *hidden2out_weights;
-    
-}NET;
+#include "net.h"
 
 
-// x is number of input, y is number of hidden
-#define IN2HIDDEN_INDEX(x, y)  (x * net->hidden_n + y)
-#define HIDDEN2OUT_INDEX(x, y) (x * net->output_n + y)
-// #define IN2HIDDEN_INDEX(x, y)  (x + y * net->input_n)
-// #define HIDDEN2OUT_INDEX(x, y) (x + y * net->hidden_n)
-
-NET *bp_create(int in_dim, int hidden_dim, int out_dim, double *weight)
-{
-	NET *net;
-	int i, j;
-
-	net = malloc(sizeof(NET));
-	if (net == NULL) {
-		printf("Error alloc\n");
-		return NULL;
-	}
-	
-	/* init Net */
-	net->input_n = in_dim + 1;
-	net->hidden_n = hidden_dim + 1;
-	net->output_n = out_dim;
-
-	net->input_units  = (double *)malloc(net->input_n * sizeof(double));
-	net->hidden_units = (double *)malloc(net->hidden_n * sizeof(double));
-	net->output_units = (double *)malloc(net->output_n * sizeof(double));
-	
-	net->in2hidden_weights  = (double *)malloc(((net->input_n) * (net->hidden_n)) * sizeof(double));
-	net->hidden2out_weights = (double *)malloc(((net->hidden_n) * (net->output_n)) * sizeof(double));
-
-	unsigned int weight_offset = 0;
-
-	/* hidden's bias to output */
-	for (i=0; i<1; i++) {
-		for (j=0; j<net->output_n; j++) {
-			net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)] = weight[weight_offset];
-			weight_offset += 1;
-		}
-	}
-	// 0,0
-
-	/* input's bias to hidden */
-	for (i=0; i<1; i++) {
-		for (j=1; j<net->hidden_n; j++) {
-			net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)] = weight[weight_offset];
-			weight_offset += 1;
-		}
-	}
-    // 0,1  0,2  0,3  0,4  0,5
-
-	/* input to hidden */
-	for (i=1; i<net->hidden_n; i++) {
-		for (j=1; j<net->input_n; j++) {
-			net->in2hidden_weights[IN2HIDDEN_INDEX(j, i)] = weight[weight_offset];
-			weight_offset += 1;
-		}
-	}
-	// 1,1   2,1   3,1    4,1   5,1    6,1   7,1
-    // 1,2   2,2   3,2    4,2   5,2    6,2   7,2
-    // ...
-
-	/* hidden to out */
-	for (i=0; i<net->output_n; i++) {
-		for (j=1; j<net->hidden_n; j++) {
-			net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)] = weight[weight_offset];
-			weight_offset += 1;
-		}
-	}
-	// 1,0  2,0  3,0   4,0  5,0
-
-	return net;
-}
-
-void print_weight(NET *net)
-{
-	int i;
-	int j;
-
-	/* hidden's bias to output */
-	for (i=0; i<1; i++) {
-		for (j=0; j<net->output_n; j++) {
-			printf("(%d, %d) %f  [%d]\n", j, i,
-						net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)],
-						HIDDEN2OUT_INDEX(j, i));
-		}
-	}
-	// 0,0
-
-	/* input's bias to hidden */
-	for (i=0; i<1; i++) {
-		for (j=1; j<net->hidden_n; j++) {
-			printf("(%d, %d) %f   [%d]\n", i, j,
-						net->in2hidden_weights[IN2HIDDEN_INDEX(i, j)],
-						IN2HIDDEN_INDEX(i, j));
-		}
-	}
-    // 0,1  0,2  0,3  0,4  0,5
-
-	/* input to hidden */
-	for (i=1; i<net->hidden_n; i++) {
-		for (j=1; j<net->input_n; j++) {
-			printf("(%d, %d) %f    [%d]\n", j, i,
-						net->in2hidden_weights[IN2HIDDEN_INDEX(j, i)],
-						IN2HIDDEN_INDEX(j, i));
-		}
-	}
-	// 1,1   2,1   3,1    4,1   5,1    6,1   7,1
-    // 1,2   2,2   3,2    4,2   5,2    6,2   7,2
-    // ...
-
-	/* hidden to out */
-	for (i=0; i<net->output_n; i++) {
-		for (j=1; j<net->hidden_n; j++) {
-			printf("(%d, %d) %f    [%d]\n", j, i,
-						net->hidden2out_weights[HIDDEN2OUT_INDEX(j, i)],
-						HIDDEN2OUT_INDEX(j, i));
-		}
-	}
-	// 1,0  2,0  3,0   4,0  5,0
-
-}
-
+#if 0
 int getMS(double *m,double *s)
 {
 	FILE *fp;
 	int i = 0,j=0;
 	
-printf("1111111111\n");
 	fp = fopen("mean.txt","r");
 	if (fp == NULL) {
 		printf("Open File mean.txt error\n");
@@ -153,17 +19,16 @@ printf("1111111111\n");
 		i++;
 	}
 	fclose(fp);
-printf("1111111111 1\n");
 
 	fp = fopen("std.txt","r");
 	while(fscanf(fp,"%lf\n",&s[j]) != -1){
 		printf("std[%d]: %lf\n", j, s[j]);
 		j++;
 	}
-printf("1111111111 2\n");
-	fclose(fp);	
+	fclose(fp);
 	return 0;
 }
+#endif
 
 double *normalize(double* data,double* mean, double* std,int size)
 {
@@ -184,6 +49,7 @@ double activation(double x)
        return((2.0/(1.0+exp(-2.0*x)))-1);
 }
 
+#if 0
 void comout_in2hidden(NET *net, double *p1,double *p2,double* c,int n1,int n2)
 {   
 
@@ -203,114 +69,89 @@ void comout_in2hidden(NET *net, double *p1,double *p2,double* c,int n1,int n2)
 		printf("hidden[%d] is %f\n", i, p2[i]);
 	}
 }
+#endif
 
-void comout_hidden2out(NET *net, double *p1,double *p2,double* c,int n1,int n2)
-{   
+void comout(int index)
+{
 	int i, j;
-	double sum;
-	p1[0] = 1.0;
+	double sum = 0.0;
+	double *inunits = units_ptr[index];
+	double *outunits = units_ptr[index+1];
+	double *weight = weight_ptr[index];
+	double *biasweight = bias_ptr[index];
 
-	for (i=0; i<n2; i++) {
+	int indim = dim[index];
+	int outdim = dim[index+1];
+
+	for(i=0;i<outdim;i++){
 		sum = 0.0;
-		printf("out[%d]:\n", i);
-		for (j=0; j<=n1; j++) {
-			printf("%f * %f(%d, %d) = %f\n", p1[j], c[HIDDEN2OUT_INDEX(j, i)],
-					j, i, p1[j] * c[HIDDEN2OUT_INDEX(j, i)]);
-			sum += p1[j] * c[HIDDEN2OUT_INDEX(j, i)];
+		for(j=0;j<indim;j++){
+			sum += inunits[j]*weight[i*indim+j];
 		}
-		p2[i] = activation(sum);
-		printf("out[%d]: %f\n", i, p2[i]);
+		sum += biasweight[i];
+		outunits[i] = activation(sum);
 	}
+#if 0
+	printf("indim: %d\n", indim);
+	printf("outdim: %d\n", outdim);
+	printf("in units:\n");
+	for (i=0; i<indim; i++) {
+		printf("%f, ", inunits[i]);
+	}
+	printf("\n");
+
+	printf("weight:\n");
+	for (i=0; i<outdim; i++) {
+		for (j=0; j<indim; j++) {
+			printf("%lf, ", weight[i*indim + j]);
+		}
+		printf ("\n");
+	}
+
+	printf("bias:\n");
+	for (i=0; i<outdim; i++) {
+		printf("%lf, ", biasweight[i]);
+	}
+	printf("\n");
+#endif
 }
 
 double test_nn(double feature[])
 {
-	NET *net;
-	int in_dim, hidden_dim, out_dim;
 	double *weight;
 	int i;
-	double mean[] = {-1.273521, 0.774245, -0.806049, 0.464097, 37.086305, -1.415184, -0.906725};
-	double std[] = {0.352998, 0.256465, 0.300457, 0.220270, 16.997804, 1.187839, 0.260172};
 	double *new_feature;
+	double mean[] = {-1.70496957,0.9875274,-1.19082871,0.60613774,46.51459222,-1.97385195,-1.34022922};
+	double std[] = {0.52533208,0.35070016,0.46897356,0.28186897,15.41503896,1.20168569,0.45616171};
 
-	FILE *fp;
-	fp = fopen("net.txt", "r");
-	
-	fscanf(fp, "%d %d %d\n", &in_dim, &hidden_dim, &out_dim);
-
-	unsigned int weight_number;
-	weight_number = (in_dim+1) * (hidden_dim) + (hidden_dim + 1) * out_dim;
-	printf("XXX weight_number: %d\n", weight_number);
-	weight = malloc(weight_number * sizeof(double));
-
-	for (i=0; i<weight_number; i++) {
-		double tmp = 0.0;
-		fscanf(fp, "%lf", &tmp);
-		weight[i] = tmp;
-	}
-
-	net = bp_create(in_dim, hidden_dim, out_dim, weight);
-	if (net == NULL) {
-		printf("Create Net Error\n");
-	}
-	printf("Create BP done\n");
-
-	// print_weight(net);
-
-#if 0
-	new_feature = malloc(sizeof(double) * in_dim);
+	new_feature = malloc(sizeof(double) * input_dim);
 	if (new_feature == NULL) {
 		perror("malloc\n");
 	}
-#endif
 
-#if 0
-	mean = (double *)malloc(in_dim * sizeof(double));
-	if (mean == NULL) {
-		printf("malloc mean error\n");
-	}
-	std  = (double *)malloc(in_dim * sizeof(double));
-	if (std == NULL) {
-		printf("malloc std error\n");
-	}
-	// getMS(mean, std);
-	printf("getMS done\n");
-#endif
-	new_feature = normalize(feature, mean, std, in_dim);	
+	new_feature = normalize(feature, mean, std, input_dim);
 
-	for(i=1;i<net->input_n;i++){
-		net->input_units[i]=new_feature[i-1];
-		printf("net->input_units %lf\n",net->input_units[i]);
+	for (i=0; i<input_dim; i++) {
+		input_units[i] = new_feature[i];
 	}
 
-	comout_in2hidden(net, net->input_units,net->hidden_units,net->in2hidden_weights,in_dim,hidden_dim);
-	comout_hidden2out(net, net->hidden_units,net->output_units,net->hidden2out_weights,hidden_dim,out_dim);
+	for (i=0; i<(hidden_count + 1); i++) {
+		comout(i);
+	}
 
-	double retdata = net->output_units[0];
-
-#if 1
-	free(net->input_units);
-	free(net->hidden_units);
-	free(net->output_units);
-	free(net->in2hidden_weights);
-	free(net->hidden2out_weights);
-	free(net);
-	// free(mean);
-	// free(std);
-	free(new_feature);
-	free(weight);
-#endif
-	return retdata;
+	return output_units[0];
 }
 
 // For Test
-double feature_test[] = {};
+double feature_test[] = {-1.30, 0.73, -0.84, 0.46, 33.24, -1.23, -0.90};
 int main()
 {
 	double ret;
-	double tmp;
-	unsigned int count = 1;
 
+	ret = test_nn(feature_test);
+	printf("result: %lf\n", ret);
+
+#if 0
 	FILE *fp;
 	fp = fopen("data.txt", "r");
 	
@@ -327,4 +168,5 @@ int main()
 		printf("result is: %f  %f\n", ret, tmp);
 		count += 1;
 	}
+#endif
 }
